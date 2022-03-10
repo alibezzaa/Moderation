@@ -1,0 +1,79 @@
+---
+title: "Moderation analysis"
+author: "AliB"
+date: "3/7/2022"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+importer le fichier 
+
+```{r}
+mydata = haven::read_sav("Video Games.sav")
+summary(mydata)
+names(mydata) = c("ID", "Aggress", "Jeux_vid", "Insensible")
+```
+
+exécuter le modèle
+```{r}
+
+Reg_model = lm(Aggress ~ scale(Jeux_vid, scale = F)* scale(Insensible, scale = F), data = mydata)
+```
+
+tester les hypothèses sur les résidus
+
+```{r}
+studentises = rstudent(Reg_model)
+estimations = scale(Reg_model$fitted.values)
+
+
+hist(studentises) # normalité
+
+
+qqnorm(studentises) # linearité
+abline(0,1)
+
+plot(estimations, studentises) #homogeneité and homoscedasticité 
+abline(0,0)
+abline(v=0)
+```
+
+
+Tester la modération
+
+```{r}
+library(QuantPsyc)
+
+# exécuter la régression
+Mod_model = moderate.lm(Jeux_vid, Insensible, Aggress, mydata)
+summary(Mod_model)
+```
+Le modèle est significatif. F(3, 438) = 88.46, p<.001, R^2 = .38
+Le temps passé à jouer des jeux vidéos a un effet significatif sur l'aggressivité.
+La variable modératrice a un effet significatif: b = 0.76, t(438) = 15.84, p<.001. Plus l'insensibilité augmente, plus l'agressivité augmente, après contrôle des effets du temps passé à jouer aux jeux vidéo et de l'interaction.
+L'interaction est significative: b = 0.03, t(438) = 3.88, p<.001. Pas d'interpretation sans le test simple slopes.
+
+
+Simple slopes
+
+On applique + et - un ET à l'ensemble des observations
+```{r}
+simple = sim.slopes(Mod_model, meanCenter(mydata$Insensible))
+simple
+```
+INT : ordonnée
+Slope c'est la pente relative à la variable x jeux_vid à un niveau de modération.
+LCL et UCL : borne inférieure et supérieure de l'IC
+à un niveau élevé d'insensibilité : Jeux_vid b =0,43, 95% CI [0.25, 0.61] 
+
+représenter graphiquement les simple slopes
+```{r}
+mean(mydata$Insensible)
+sd(mydata$Insensible)
+graph.mod(simple, Jeux_vid, Aggress, mydata,
+          xlab = "Temps passé aux jeux (centré)",
+          ylab = "Aggressivité", ylimit = 4)
+```
+
+Lorsqu'on est très insensible, l'effet du temps passé à jouer des jeux vidéos est significativement associé à l'aggressivité. Ce n'est le cas pour les personnes très sensibles.
